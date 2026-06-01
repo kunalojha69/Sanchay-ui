@@ -2,6 +2,7 @@
 	import '../layout.css';
 	import { theme } from '$lib/state/theme.svelte';
 	import CommandPalette from '$lib/components/CommandPalette.svelte';
+	import Uploader from '$lib/components/Uploader.svelte';
 	import {
 		Folder,
 		Trash2,
@@ -20,6 +21,9 @@
 
 	// Command palette state binding
 	let isSearchOpen = $state(false);
+	let isUploadOpen = $state(false);
+
+	let currentFolder = $state<string | null>(null);
 
 	// Sync theme engine dark class on mounting and changes
 	$effect(() => {
@@ -150,6 +154,7 @@
 				</div>
 
 				<button
+					onclick={() => (isUploadOpen = true)}
 					class="flex h-11 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/30 active:scale-98"
 				>
 					<Upload class="h-4 w-4" />
@@ -183,5 +188,6 @@
 		</main>
 	</div>
 
+	<Uploader bind:isOpen={isUploadOpen} currentFolderId={currentFolder} />
 	<CommandPalette bind:open={isSearchOpen} />
 </div>
