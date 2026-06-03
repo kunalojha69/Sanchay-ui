@@ -41,7 +41,7 @@
 				let mainChannelId = null;
 
 				try {
-					const CONCURRENCY_LIMIT = 4;
+					const CONCURRENCY_LIMIT = 3;
 					let currentPartNo = 1;
 
 					await new Promise<void>((resolve, reject) => {
@@ -73,7 +73,7 @@
 										if (!chunkRes.ok) throw new Error(`chunk ${partNo} failed`);
 										const result = await chunkRes.json();
 
-										uploadedParts.push({ partNo: partNo, id: result.partId });
+										uploadedParts.push({ partNo: partNo, id: result.partId, size: result.size });
 
 										if (partNo === 1 && result.channelId) {
 											mainChannelId = result.channelId;
@@ -99,7 +99,7 @@
 
 					uploadedParts.sort((a, b) => a.partNo - b.partNo);
 
-					const finalParts = uploadedParts.map((p) => ({ id: p.id }));
+					const finalParts = uploadedParts.map((p) => ({ id: p.id, size: p.size }));
 
 					const payload: Record<string, any> = {
 						type: 'file',
