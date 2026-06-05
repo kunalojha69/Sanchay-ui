@@ -32,6 +32,14 @@
 			{:else}
 				{@render tileView(data.files || [])}
 			{/if}
+
+			{#if data.error}
+				<div
+					class="col-span-full rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-red-500"
+				>
+					{data.error}
+				</div>
+			{/if}
 		</div>
 	</div>
 </div>

@@ -16,6 +16,7 @@
 		Rows3Icon,
 		Upload
 	} from 'lucide-svelte';
+	import { Toaster } from '$lib/components/ui/sonner';
 
 	let { children } = $props();
 
@@ -190,4 +191,6 @@
 
 	<Uploader bind:isOpen={isUploadOpen} currentFolderId={currentFolder} />
 	<CommandPalette bind:open={isSearchOpen} />
+
+	<Toaster position="bottom-right" richColors={true} />
 </div>

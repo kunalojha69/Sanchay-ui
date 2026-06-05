@@ -4,6 +4,7 @@
 	import Uppy from '@uppy/core';
 	import Dashboard from '@uppy/dashboard';
 	import { api } from '$lib/api/client';
+	import { toast } from 'svelte-sonner';
 
 	import '@uppy/core/css/style.min.css';
 	import '@uppy/dashboard/css/style.min.css';
@@ -26,6 +27,56 @@
 			closeModalOnClickOutside: true
 		});
 
+		const activeToasts: Record<string, string | number> = {};
+		const lastPercentages: Record<string, number> = {};
+
+		uppy.on('upload-started', (file) => {
+			activeToasts[file.id] = toast.loading(`Uploading ${file.name} (0%) ...`, {
+				duration: Number.POSITIVE_INFINITY
+			});
+
+			lastPercentages[file.id] = 0;
+			const dashboard = uppy.getPlugin('Dashboard');
+			if (dashboard) {
+				dashboard.closeModal();
+			}
+		});
+
+		uppy.on('upload-progress', (file, progress) => {
+			if (!activeToasts[file.id]) return;
+
+			const percent = Math.round((progress.bytesUploaded / progress.bytesTotal) * 100);
+
+			if (percent > lastPercentages[file.id]) {
+				lastPercentages[file.id] = percent;
+				toast.loading(`Uploading ${file.name} (${percent}%)...`, {
+					id: activeToasts[file.id]
+				});
+			}
+		});
+
+		uppy.on('upload-success', (file, response) => {
+			if (activeToasts[file.id]) {
+				toast.success(`${file.name} uploaded successfully!`, {
+					id: activeToasts[file.id],
+					duration: 4000
+				});
+				delete activeToasts[file.id];
+				delete lastPercentages[file.id];
+			}
+		});
+
+		uppy.on('upload-error', (file, error) => {
+			if (activeToasts[file.id]) {
+				// 5. Morph the loading toast into an error toast
+				toast.error(`Failed to upload ${file.name}`, {
+					id: activeToasts[file.id],
+					duration: 5000
+				});
+				delete activeToasts[file.id];
+				delete lastPercentages[file.id];
+			}
+		});
 		uppy.addUploader(async (uploadIds) => {
 			for (const fileId of uploadIds) {
 				const file = uppy.getFile(fileId);
@@ -62,30 +113,56 @@
 
 								const url = `/api/uploads/${uploadId}?fileName=${encodeURIComponent(file.name)}&partNo=${partNo}`;
 
-								fetch(url, {
-									method: 'POST',
-									body: chunk,
-									headers: {
-										'Content-Type': 'application/octet-stream'
-									}
+								new Promise((resolveChunk, rejectChunk) => {
+									const xhr = new XMLHttpRequest();
+									xhr.open('POST', url, true);
+									xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+
+									let chunkLoaded = 0;
+
+									xhr.upload.onprogress = (e) => {
+										if (e.lengthComputable) {
+											const delta = e.loaded - chunkLoaded;
+											chunkLoaded = e.loaded;
+											bytesUploaded += delta;
+
+											uppy.emit('upload-progress', uppy.getFile(fileId), {
+												bytesUploaded: bytesUploaded,
+												bytesTotal: file.size
+											});
+										}
+									};
+
+									xhr.onload = () => {
+										if (xhr.status >= 200 && xhr.status <= 300) {
+											const delta = chunk.size - chunkLoaded;
+											if (delta > 0) {
+												bytesUploaded += delta;
+												uppy.emit('upload-progress', uppy.getFile(fileId), {
+													bytesUploaded: bytesUploaded,
+													bytesTotal: file.size
+												});
+											}
+
+											try {
+												const result = JSON.parse(xhr.responseText);
+												resolveChunk(result);
+											} catch (err) {
+												rejectChunk(new Error('Invalid JSON response from server'));
+											}
+										} else {
+											rejectChunk(new Error(`Chunk ${partNo} failed with status ${xhr.status}`));
+										}
+									};
+
+									xhr.onerror = () => rejectChunk(new Error(`Network error on chunk ${partNo}`));
+									xhr.send(chunk);
 								})
-									.then(async (chunkRes) => {
-										if (!chunkRes.ok) throw new Error(`chunk ${partNo} failed`);
-										const result = await chunkRes.json();
-
+									.then((result: any) => {
 										uploadedParts.push({ partNo: partNo, id: result.partId, size: result.size });
-
 										if (partNo === 1 && result.channelId) {
 											mainChannelId = result.channelId;
 										}
-
-										bytesUploaded += chunk.size;
-										uppy.emit('upload-progress', file, {
-											uploader: uppy,
-											bytesUploaded: bytesUploaded,
-											bytesTotal: file.size
-										});
-
 										activeUploads--;
 										processNextBatch();
 									})
@@ -126,6 +203,10 @@
 		uppy.on('dashboard:modal-closed', () => {
 			isOpen = false;
 		});
+
+		// uppy.on('upload', () => {
+		// 	isOpen = false;
+		// });
 
 		return () => {
 			uppy.close({ reason: 'unmount' });
