@@ -8,9 +8,10 @@
 
 	import '@uppy/core/css/style.min.css';
 	import '@uppy/dashboard/css/style.min.css';
+	import { fileSystem } from '$lib/state/files.svelte';
 
 	let { isOpen = $bindable(false), currentFolderId } = $props();
-	let uppy: typeof Uppy;
+	let uppy: Uppy;
 
 	onMount(() => {
 		uppy = new Uppy({
@@ -30,7 +31,7 @@
 		const activeToasts: Record<string, string | number> = {};
 		const lastPercentages: Record<string, number> = {};
 
-		uppy.on('upload-started', (file) => {
+		uppy.on('upload-started' as any, (file: any) => {
 			activeToasts[file.id] = toast.loading(`Uploading ${file.name} (0%) ...`, {
 				duration: Number.POSITIVE_INFINITY
 			});
@@ -43,9 +44,9 @@
 		});
 
 		uppy.on('upload-progress', (file, progress) => {
-			if (!activeToasts[file.id]) return;
+			if (!file || !activeToasts[file.id]) return;
 
-			const percent = Math.round((progress.bytesUploaded / progress.bytesTotal) * 100);
+			const percent = Math.round((progress.bytesUploaded / (progress.bytesTotal || 1)) * 100);
 
 			if (percent > lastPercentages[file.id]) {
 				lastPercentages[file.id] = percent;
@@ -55,8 +56,8 @@
 			}
 		});
 
-		uppy.on('upload-success', (file, response) => {
-			if (activeToasts[file.id]) {
+		uppy.on('upload-success', (file, _response) => {
+			if (file && activeToasts[file.id]) {
 				toast.success(`${file.name} uploaded successfully!`, {
 					id: activeToasts[file.id],
 					duration: 4000
@@ -66,8 +67,8 @@
 			}
 		});
 
-		uppy.on('upload-error', (file, error) => {
-			if (activeToasts[file.id]) {
+		uppy.on('upload-error', (file, _error) => {
+			if (file && activeToasts[file.id]) {
 				// 5. Morph the loading toast into an error toast
 				toast.error(`Failed to upload ${file.name}`, {
 					id: activeToasts[file.id],
@@ -80,10 +81,10 @@
 		uppy.addUploader(async (uploadIds) => {
 			for (const fileId of uploadIds) {
 				const file = uppy.getFile(fileId);
-				uppy.emit('upload-started', file);
+				uppy.emit('upload-started' as any, file);
 
 				const chunkSize = 5 * 1024 * 1024;
-				const totalParts = Math.ceil(file.size / chunkSize);
+				const totalParts = Math.ceil((file.size || 0) / chunkSize);
 
 				const uploadId = crypto.randomUUID();
 
@@ -129,7 +130,7 @@
 											uppy.emit('upload-progress', uppy.getFile(fileId), {
 												bytesUploaded: bytesUploaded,
 												bytesTotal: file.size
-											});
+											} as any);
 										}
 									};
 
@@ -141,13 +142,13 @@
 												uppy.emit('upload-progress', uppy.getFile(fileId), {
 													bytesUploaded: bytesUploaded,
 													bytesTotal: file.size
-												});
+												} as any);
 											}
 
 											try {
 												const result = JSON.parse(xhr.responseText);
 												resolveChunk(result);
-											} catch (err) {
+											} catch (err: any) {
 												rejectChunk(new Error('Invalid JSON response from server'));
 											}
 										} else {
@@ -178,7 +179,7 @@
 
 					const finalParts = uploadedParts.map((p) => ({ id: p.id, size: p.size }));
 
-					const payload: Record<string, any> = {
+					const payload: Record<string, unknown> = {
 						type: 'file',
 						name: file.name,
 						mimeType: file.type || 'application/octet-stream',
@@ -193,10 +194,10 @@
 
 					const finalData = await api.post('/files', payload);
 
-					uppy.emit('upload-success', file.id, finalData);
+					uppy.emit('upload-success', file, finalData as any);
 				} catch (err) {
 					console.error('[Uploader Error]', err);
-					uppy.emit('upload-error', file.id, err);
+					uppy.emit('upload-error', file, err as any);
 				}
 			}
 		});
@@ -204,12 +205,16 @@
 			isOpen = false;
 		});
 
+		uppy.on('upload-success', (_file, response) => {
+			fileSystem.add(response.body);
+		});
+
 		// uppy.on('upload', () => {
 		// 	isOpen = false;
 		// });
 
 		return () => {
-			uppy.close({ reason: 'unmount' });
+			uppy.destroy();
 		};
 	});
 

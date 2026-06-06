@@ -17,12 +17,17 @@
 		Upload
 	} from 'lucide-svelte';
 	import { Toaster } from '$lib/components/ui/sonner';
+	import { page } from '$app/state';
+	import NewFolder from '$lib/components/NewFolder.svelte';
 
 	let { children } = $props();
+
+	const user = $derived(page.data.user);
 
 	// Command palette state binding
 	let isSearchOpen = $state(false);
 	let isUploadOpen = $state(false);
+	let isNewFolderOpen = $state(false);
 
 	let currentFolder = $state<string | null>(null);
 
@@ -34,6 +39,17 @@
 			document.documentElement.classList.remove('dark');
 		}
 	});
+
+	const initials = $derived(
+		user?.name
+			? user.name
+					.split(' ')
+					.map((n: string) => n[0])
+					.join('')
+					.toUpperCase()
+					.slice(0, 2)
+			: 'U'
+	);
 
 	// Sidebar navigation links array
 	const navigation = [
@@ -92,11 +108,15 @@
 				<div
 					class="from-brand-500 flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-tr to-indigo-500 text-xs font-bold text-white shadow-sm"
 				>
-					KU
+					{#if user.profilePic}
+						<img src={user.profilePic} alt="profilePic" class="rounded-full" />
+					{:else}
+						{initials}
+					{/if}
 				</div>
 				<div class="flex min-w-0 flex-col">
-					<span class="truncate text-sm font-semibold">Kunal</span>
-					<span class="truncate text-[11px] text-muted-foreground">mtech_student@college.edu</span>
+					<span class="truncate text-sm font-semibold">{user.firstName}</span>
+					<span class="truncate text-[11px] text-muted-foreground">@{user.username}</span>
 				</div>
 			</div>
 		</div>
@@ -153,7 +173,12 @@
 						<Rows3Icon class="h-4 w-4" />
 					</button>
 				</div>
-
+				<button
+					onclick={() => (isNewFolderOpen = true)}
+					class="flex h-11 items-center gap-2 rounded-lg bg-secondary px-5 text-sm font-semibold text-secondary-foreground shadow-md shadow-secondary/20 transition-all hover:bg-secondary/90 hover:shadow-lg hover:shadow-secondary/30 active:scale-98"
+				>
+					New Folder
+				</button>
 				<button
 					onclick={() => (isUploadOpen = true)}
 					class="flex h-11 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-md shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-lg hover:shadow-primary/30 active:scale-98"
@@ -191,6 +216,6 @@
 
 	<Uploader bind:isOpen={isUploadOpen} currentFolderId={currentFolder} />
 	<CommandPalette bind:open={isSearchOpen} />
-
+	<NewFolder bind:isOpen={isNewFolderOpen} currentFolderId={currentFolder} />
 	<Toaster position="bottom-right" richColors={true} />
 </div>

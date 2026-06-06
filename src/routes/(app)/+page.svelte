@@ -3,34 +3,35 @@
 	import { getFileStyles } from '$lib/fileStyles';
 	import { dateFormat, sizeFormat } from '$lib/utils.js';
 	import { EllipsisVertical } from 'lucide-svelte';
+	import { fileSystem } from '$lib/state/files.svelte.js';
 
 	let { data } = $props();
+
+	let files = $derived(fileSystem.files);
+
+	$effect(() => {
+		if (data.files) {
+			fileSystem.setFiles(data.files);
+		}
+	});
 </script>
 
 <div class="mx-auto flex h-full w-full max-w-[1600px] flex-col space-y-6">
-	<div class="flex shrink-0 items-center gap-4">
-		<div class="text-4xl">☀️</div>
-		<div>
-			<p class="text-sm font-medium text-primary">Good Morning</p>
-			<h2 class="text-2xl font-bold tracking-tight text-foreground">Kunal</h2>
-		</div>
-	</div>
-
 	<div
 		class="flex flex-1 flex-col overflow-hidden rounded-3xl border border-border bg-card p-6 shadow-sm"
 	>
 		<div class="mb-6 flex shrink-0 items-center justify-between">
 			<h3 class="text-lg font-bold">My Files</h3>
-			<span class="text-sm font-medium text-muted-foreground">{data.files?.length || 0} items</span>
+			<span class="text-sm font-medium text-muted-foreground">{files?.length || 0} items</span>
 		</div>
 
 		<div class="flex-1 overflow-y-auto pr-2">
 			{#if theme.viewType === 'list'}
-				{@render listView(data.files || [])}
+				{@render listView(files || [])}
 			{:else if theme.viewType === 'grid'}
-				{@render gridView(data.files || [])}
+				{@render gridView(files || [])}
 			{:else}
-				{@render tileView(data.files || [])}
+				{@render tileView(files || [])}
 			{/if}
 
 			{#if data.error}
