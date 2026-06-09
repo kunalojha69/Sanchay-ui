@@ -56,6 +56,14 @@ class ApiClient {
 	delete<T>(endpoint: string, options?: ApiOptions) {
 		return this.request<T>(endpoint, { ...options, method: 'DELETE' });
 	}
+
+	patch<T>(endpoint: string, data?: any, options?: ApiOptions) {
+		return this.request<T>(endpoint, {
+			...options,
+			method: 'PATCH',
+			body: data instanceof FormData ? data : JSON.stringify(data)
+		});
+	}
 }
 
 export const api = new ApiClient();

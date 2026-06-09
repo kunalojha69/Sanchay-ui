@@ -19,6 +19,9 @@
 	import { Toaster } from '$lib/components/ui/sonner';
 	import { page } from '$app/state';
 	import NewFolder from '$lib/components/NewFolder.svelte';
+	import RenameModal from '$lib/components/RenameModal.svelte';
+	import DeleteModal from '$lib/components/DeleteModal.svelte';
+	import MoveModal from '$lib/components/MoveModal.svelte';
 
 	let { children } = $props();
 
@@ -29,7 +32,7 @@
 	let isUploadOpen = $state(false);
 	let isNewFolderOpen = $state(false);
 
-	let currentFolder = $state<string | null>(null);
+	let currentFolder = $derived(page.url.searchParams.get('folder'));
 
 	// Sync theme engine dark class on mounting and changes
 	$effect(() => {
@@ -217,5 +220,8 @@
 	<Uploader bind:isOpen={isUploadOpen} currentFolderId={currentFolder} />
 	<CommandPalette bind:open={isSearchOpen} />
 	<NewFolder bind:isOpen={isNewFolderOpen} currentFolderId={currentFolder} />
+	<RenameModal />
+	<DeleteModal />
+	<MoveModal />
 	<Toaster position="bottom-right" richColors={true} />
 </div>

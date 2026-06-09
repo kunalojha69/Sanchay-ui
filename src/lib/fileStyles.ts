@@ -3,30 +3,30 @@ import {
 	Folder,
 	FileText,
 	FileImage,
-	FileVideo,
 	FileCode,
-	FileAudio,
 	FileArchive,
 	FileSpreadsheet,
-	File as FileIcon
+	File as FileIcon,
+	FileVideoCamera,
+	FileMusic
 } from 'lucide-svelte';
-import type { ComponentType } from 'svelte';
+import type { Component } from 'svelte';
 
 // Define the return type for perfect TypeScript support
 interface FileStyle {
-	icon: ComponentType;
+	icon: Component<any>;
 	color: string;
 	bg: string;
 }
 
 export function getFileStyles(type: string, name: string): FileStyle {
-	const ext = name.split('.').pop()?.toLowerCase();
+	const ext = name.split('/').pop()?.toLowerCase();
 
 	if (type === 'folder') {
 		return { icon: Folder, color: 'text-amber-500', bg: 'bg-amber-100 dark:bg-amber-500/20' };
 	}
 
-	if (['pdf', 'docx', 'doc', 'txt'].includes(ext || '')) {
+	if (['pdf', 'docx', 'doc', 'txt', 'plain'].includes(ext || '')) {
 		return { icon: FileText, color: 'text-rose-500', bg: 'bg-rose-100 dark:bg-rose-500/20' };
 	}
 
@@ -39,11 +39,15 @@ export function getFileStyles(type: string, name: string): FileStyle {
 	}
 
 	if (['mp4', 'mov', 'avi', 'mkv'].includes(ext || '') || type === 'video') {
-		return { icon: FileVideo, color: 'text-purple-500', bg: 'bg-purple-100 dark:bg-purple-500/20' };
+		return {
+			icon: FileVideoCamera,
+			color: 'text-purple-500',
+			bg: 'bg-purple-100 dark:bg-purple-500/20'
+		};
 	}
 
 	if (['mp3', 'wav', 'ogg'].includes(ext || '')) {
-		return { icon: FileAudio, color: 'text-red-500', bg: 'bg-red-100 dark:bg-red-500/20' };
+		return { icon: FileMusic, color: 'text-red-500', bg: 'bg-red-100 dark:bg-red-500/20' };
 	}
 
 	if (['zip', 'rar', '7z', 'tar'].includes(ext || '')) {
