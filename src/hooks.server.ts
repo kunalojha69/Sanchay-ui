@@ -1,6 +1,7 @@
 import { redirect, type Handle } from '@sveltejs/kit';
+import { sequence } from '@sveltejs/kit/hooks';
 
-export const handle: Handle = async ({ event, resolve }) => {
+const handleRedirects: Handle = async ({ event, resolve }) => {
 	const token = event.cookies.get('access_token');
 
 	const path = event.url.pathname;
@@ -21,3 +22,18 @@ export const handle: Handle = async ({ event, resolve }) => {
 
 	return resolve(event);
 };
+
+const handleTheme: Handle = async ({ event, resolve }) => {
+	const theme = event.cookies.get('theme') || 'light';
+
+	return await resolve(event, {
+		transformPageChunk: ({ html }) => {
+			if (theme === 'dark') {
+				return html.replace('<html lang="en">', '<html class="dark">');
+			}
+			return html;
+		}
+	});
+};
+
+export const handle = sequence(handleRedirects, handleTheme);

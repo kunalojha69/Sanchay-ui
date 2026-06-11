@@ -3,6 +3,7 @@
 	import { theme } from '$lib/state/theme.svelte';
 	import CommandPalette from '$lib/components/CommandPalette.svelte';
 	import Uploader from '$lib/components/Uploader.svelte';
+	import { resolve } from '$app/paths';
 	import {
 		Folder,
 		Trash2,
@@ -22,6 +23,7 @@
 	import RenameModal from '$lib/components/RenameModal.svelte';
 	import DeleteModal from '$lib/components/DeleteModal.svelte';
 	import MoveModal from '$lib/components/MoveModal.svelte';
+	import { onMount } from 'svelte';
 
 	let { children } = $props();
 
@@ -34,13 +36,11 @@
 
 	let currentFolder = $derived(page.url.searchParams.get('folder'));
 
-	// Sync theme engine dark class on mounting and changes
-	$effect(() => {
-		if (theme.mode === 'dark') {
-			document.documentElement.classList.add('dark');
-		} else {
-			document.documentElement.classList.remove('dark');
-		}
+	let currentPath = $derived(page.url.pathname);
+
+	onMount(() => {
+		const isDark = document.documentElement.classList.contains('dark');
+		theme.init(isDark ? 'dark' : 'light');
 	});
 
 	const initials = $derived(
@@ -56,10 +56,10 @@
 
 	// Sidebar navigation links array
 	const navigation = [
-		{ name: 'All Files', icon: Folder, active: true },
-		{ name: 'Usage', icon: HardDrive, active: false },
-		{ name: 'Trash', icon: Trash2, active: false },
-		{ name: 'Settings', icon: Settings, active: false }
+		{ name: 'All Files', icon: Folder, href: '/' },
+		{ name: 'Usage', icon: HardDrive, href: '/usage' },
+		{ name: 'Trash', icon: Trash2, href: '/trash' },
+		{ name: 'Settings', icon: Settings, href: '/settings' }
 	];
 </script>
 
@@ -85,23 +85,25 @@
 
 			<nav class="space-y-1.5">
 				{#each navigation as item (item.name)}
-					<button
+					{@const isActive = currentPath === item.href}
+					<a
+						href={resolve(item.href)}
 						class="group relative flex w-full items-center gap-3.5 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200
-            {item.active
+            {isActive
 							? 'bg-secondary font-semibold text-primary'
 							: 'text-muted-foreground hover:bg-muted hover:text-foreground'}"
 					>
-						{#if item.active}
+						{#if isActive}
 							<div class="absolute top-1/3 bottom-1/3 left-0 w-1 rounded-r-full bg-primary"></div>
 						{/if}
 
 						<item.icon
-							class="h-5 w-5 transition-transform duration-200 group-hover:scale-105 {item.active
+							class="h-5 w-5 transition-transform duration-200 group-hover:scale-105 {isActive
 								? 'text-primary'
 								: ''}"
 						/>
 						<span>{item.name}</span>
-					</button>
+					</a>
 				{/each}
 			</nav>
 		</div>
